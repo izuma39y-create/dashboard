@@ -48,7 +48,7 @@
   .minmax-item { display: flex; flex-direction: column; gap: 2px; }
   .minmax-label { font-size: 8px; color: var(--muted); font-family: 'Courier New', monospace; text-transform: uppercase; }
   .minmax-val { font-size: 15px; font-family: 'Courier New', monospace; font-weight: 600; }
-  .divider { width: 1px; background: var(--border); }
+  .divider-v { width: 1px; background: var(--border); }
   .spinner { width: 13px; height: 13px; border: 2px solid #ffffff15; border-top-color: currentColor; border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; flex-shrink: 0; }
   .loading-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
   .loading-row span { font-size: 11px; color: var(--muted); }
@@ -79,37 +79,105 @@
   </div>
   <button class="refresh-btn" onclick="loadAll()">↻ 更新</button>
   <div class="grid3">
-    <div class="card"><div class="card-accent" style="background:linear-gradient(90deg,var(--wx),transparent)"></div><div class="card-label">📍 天気</div><div id="content-weather"><div class="loading-row"><span class="spinner" style="color:var(--wx)"></span><span>取得中</span></div></div></div>
-    <div class="card"><div class="card-accent" style="background:linear-gradient(90deg,var(--ni),transparent)"></div><div class="card-label">🇯🇵 日経</div><div id="content-nikkei"><div class="loading-row"><span class="spinner" style="color:var(--ni)"></span><span>取得中</span></div></div></div>
-    <div class="card"><div class="card-accent" style="background:linear-gradient(90deg,var(--btc),transparent)"></div><div class="card-label">₿ BTC</div><div id="content-btc"><div class="loading-row"><span class="spinner" style="color:var(--btc)"></span><span>取得中</span></div></div></div>
+    <div class="card"><div class="card-accent" style="background:linear-gradient(90deg,var(--wx),transparent)"></div><div class="card-label">📍 天気</div><div id="cw"><div class="loading-row"><span class="spinner" style="color:var(--wx)"></span><span>取得中</span></div></div></div>
+    <div class="card"><div class="card-accent" style="background:linear-gradient(90deg,var(--ni),transparent)"></div><div class="card-label">🇯🇵 日経</div><div id="cn"><div class="loading-row"><span class="spinner" style="color:var(--ni)"></span><span>取得中</span></div></div></div>
+    <div class="card"><div class="card-accent" style="background:linear-gradient(90deg,var(--btc),transparent)"></div><div class="card-label">₿ BTC</div><div id="cb"><div class="loading-row"><span class="spinner" style="color:var(--btc)"></span><span>取得中</span></div></div></div>
   </div>
   <div class="news-card">
     <div class="card-accent" style="background:linear-gradient(90deg,var(--news),var(--ni),var(--btc))"></div>
     <div class="card-label">📰 今日のニュース</div>
-    <div id="content-news"><div class="loading-row"><span class="spinner" style="color:var(--news)"></span><span>取得中…</span></div></div>
+    <div id="cnews"><div class="loading-row"><span class="spinner" style="color:var(--news)"></span><span>取得中…</span></div></div>
   </div>
-  <div class="footer"><span id="lastUpdated">—</span> JST &nbsp;·&nbsp;<button class="reset-link" onclick="resetKey()">APIキー変更</button></div>
+  <div class="footer"><span id="lu">—</span> JST &nbsp;·&nbsp;<button class="reset-link" onclick="resetKey()">APIキー変更</button></div>
 </div>
 <script>
-let API_KEY='';
-const SC={weather:'var(--wx)',nikkei:'var(--ni)',btc:'var(--btc)',news:'var(--news)'};
-const SL={weather:'WX',nikkei:'NI225',btc:'BTC',news:'NEWS'};
-const ST={weather:'loading',nikkei:'loading',btc:'loading',news:'loading'};
-function saveApiKey(){const v=document.getElementById('apiKeyInput').value.trim();if(!v.startsWith('sk-ant')){alert('形式が違います');return;}localStorage.setItem('dash_api_key',v);API_KEY=v;showMain();}
-function resetKey(){if(!confirm('APIキーを削除しますか？'))return;localStorage.removeItem('dash_api_key');location.reload();}
+let AK='';
+const SC={w:'var(--wx)',n:'var(--ni)',b:'var(--btc)',news:'var(--news)'};
+const SL={w:'WX',n:'NI225',b:'BTC',news:'NEWS'};
+const ST={w:'loading',n:'loading',b:'loading',news:'loading'};
+
+function saveApiKey(){const v=document.getElementById('apiKeyInput').value.trim();if(!v.startsWith('sk-ant')){alert('形式が違います');return;}localStorage.setItem('dk',v);AK=v;showMain();}
+function resetKey(){if(!confirm('APIキーを削除しますか？'))return;localStorage.removeItem('dk');location.reload();}
 function showMain(){document.getElementById('setup').style.display='none';document.getElementById('main').style.display='block';startClock();loadAll();}
 function startClock(){function t(){const n=new Date();document.getElementById('timeStr').textContent=n.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});document.getElementById('dateStr').textContent=n.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});}t();setInterval(t,1000);}
 function setSt(k,s){ST[k]=s;renderSt();}
 function renderSt(){document.getElementById('statusRow').innerHTML=Object.keys(ST).map(k=>{const s=ST[k],c=SC[k];const ds=s==='ok'?`background:${c}`:s==='err'?`background:var(--neg)`:`background:transparent;border:1px solid ${c};animation:pulse 1.5s infinite`;const tc=s==='ok'?c:s==='err'?'var(--neg)':c+'80';return`<span class="status-dot" style="color:${tc}"><span class="dot" style="${ds}"></span>${SL[k]}</span>`;}).join('');}
-async function callClaude(prompt){const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});if(!res.ok){const t=await res.text();throw new Error(`HTTP ${res.status}: ${t.slice(0,150)}`);}const data=await res.json();if(data.error)throw new Error(JSON.stringify(data.error));const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');if(!text)throw new Error('no text, types:'+data.content.map(b=>b.type).join(','));return text;}
-function getJSON(text){const m=text.match(/\{[\s\S]*\}/);if(!m)throw new Error('JSON未検出:'+text.slice(0,80));return JSON.parse(m[0]);}
-function err(msg){return`<div class="err">❌ ${msg}</div>`;}
-function loadAll(){Object.keys(ST).forEach(k=>{ST[k]='loading';document.getElementById('content-'+k).innerHTML=`<div class="loading-row"><span class="spinner" style="color:${SC[k]}"></span><span>取得中</span></div>`;});renderSt();document.getElementById('lastUpdated').textContent='—';fetchWeather();fetchNikkei();fetchBTC();fetchNews();}
-async function fetchWeather(){try{const t=await callClaude('Search current weather Yokohama Japan today. Reply ONLY with JSON no markdown: {"temp_now":18,"temp_max":22,"temp_min":12,"condition":"晴れ"}');const d=getJSON(t);document.getElementById('content-weather').innerHTML=`<div class="card-big" style="color:var(--wx)">${d.temp_now}°</div><div class="card-sub">${d.condition}</div><div class="minmax"><div class="minmax-item"><div class="minmax-label">最高</div><div class="minmax-val" style="color:#fca5a5">${d.temp_max}°</div></div><div class="divider"></div><div class="minmax-item"><div class="minmax-label">最低</div><div class="minmax-val" style="color:#93c5fd">${d.temp_min}°</div></div></div>`;setSt('weather','ok');}catch(e){document.getElementById('content-weather').innerHTML=err(e.message);setSt('weather','err');}}
-async function fetchNikkei(){try{const t=await callClaude('Search latest Nikkei 225 closing price today. Reply ONLY with JSON no markdown: {"price":38500,"change":-200,"pct":-0.52}');const d=getJSON(t);const u=d.change>=0;document.getElementById('content-nikkei').innerHTML=`<div class="card-big" style="color:var(--ni)">¥${Math.round(d.price).toLocaleString('ja-JP')}</div><div class="card-row"><span style="font-size:11px;font-family:'Courier New',monospace;font-weight:600;color:${u?'var(--pos)':'var(--neg)'}">${u?'▲':'▼'} ${Math.abs(Math.round(d.change)).toLocaleString()}</span><span class="badge" style="color:${u?'var(--pos)':'var(--neg)'};background:${u?'#34d39920':'#f8717120'}">${u?'+':''}${Number(d.pct).toFixed(2)}%</span></div>`;setSt('nikkei','ok');}catch(e){document.getElementById('content-nikkei').innerHTML=err(e.message);setSt('nikkei','err');}}
-async function fetchBTC(){try{const t=await callClaude('Search current Bitcoin price USD now. Reply ONLY with JSON no markdown: {"price":85000,"pct_24h":-1.2}');const d=getJSON(t);const u=d.pct_24h>=0;document.getElementById('content-btc').innerHTML=`<div class="card-big" style="color:var(--btc);font-size:18px">$${Number(d.price).toLocaleString('en-US',{maximumFractionDigits:0})}</div><div class="card-row"><span class="badge" style="color:${u?'var(--pos)':'var(--neg)'};background:${u?'#34d39920':'#f8717120'}">${u?'+':''}${Number(d.pct_24h).toFixed(2)}%</span></div>`;setSt('btc','ok');}catch(e){document.getElementById('content-btc').innerHTML=err(e.message);setSt('btc','err');}}
-async function fetchNews(){try{const today=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});const t=await callClaude(`Search today (${today}) top Japan news. Reply ONLY with JSON no markdown: {"economy":["h1","h2","h3"],"entertainment":["h1","h2","h3"],"politics":["h1","h2","h3"]} Real Japanese headlines under 34 chars.`);const d=getJSON(t);const secs=[{key:'economy',label:'📈 経済',color:'var(--ni)'},{key:'entertainment',label:'🎬 エンタメ',color:'#a78bfa'},{key:'politics',label:'🏛 政治',color:'var(--btc)'}];document.getElementById('content-news').innerHTML='<div class="news-sections">'+secs.map(s=>`<div><div class="news-section-title" style="color:${s.color}">${s.label}</div>${(d[s.key]||[]).map((h,i)=>`<div class="news-item"><span class="news-num" style="color:${s.color}">0${i+1}</span><span class="news-text">${h}</span></div>`).join('')}</div>`).join('')+'</div>';setSt('news','ok');document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false});}catch(e){document.getElementById('content-news').innerHTML=err(e.message);setSt('news','err');}}
-window.addEventListener('DOMContentLoaded',()=>{const s=localStorage.getItem('dash_api_key');if(s){API_KEY=s;showMain();}renderSt();});
+function e(msg){return`<div class="err">❌ ${msg}</div>`;}
+function loadAll(){['w','n','b','news'].forEach(k=>{ST[k]='loading';});renderSt();document.getElementById('lu').textContent='—';
+  document.getElementById('cw').innerHTML=`<div class="loading-row"><span class="spinner" style="color:var(--wx)"></span><span>取得中</span></div>`;
+  document.getElementById('cn').innerHTML=`<div class="loading-row"><span class="spinner" style="color:var(--ni)"></span><span>取得中</span></div>`;
+  document.getElementById('cb').innerHTML=`<div class="loading-row"><span class="spinner" style="color:var(--btc)"></span><span>取得中</span></div>`;
+  document.getElementById('cnews').innerHTML=`<div class="loading-row"><span class="spinner" style="color:var(--news)"></span><span>取得中…</span></div>`;
+  fetchWeather();fetchBTC();fetchNikkeiNews();}
+
+// 天気: Open-Meteo (無料・CORS対応)
+async function fetchWeather(){
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.4437&longitude=139.638&daily=temperature_2m_max,temperature_2m_min,weathercode&current_weather=true&timezone=Asia/Tokyo&forecast_days=1');
+    const d=await r.json();
+    const code=d.current_weather.weathercode;
+    const cond=code===0?'快晴':code<=1?'晴れ':code<=3?'曇り':code<=67?'雨':code<=77?'雪':'にわか雨';
+    const now=Math.round(d.current_weather.temperature);
+    const max=Math.round(d.daily.temperature_2m_max[0]);
+    const min=Math.round(d.daily.temperature_2m_min[0]);
+    document.getElementById('cw').innerHTML=`<div class="card-big" style="color:var(--wx)">${now}°</div><div class="card-sub">${cond}</div><div class="minmax"><div class="minmax-item"><div class="minmax-label">最高</div><div class="minmax-val" style="color:#fca5a5">${max}°</div></div><div class="divider-v"></div><div class="minmax-item"><div class="minmax-label">最低</div><div class="minmax-val" style="color:#93c5fd">${min}°</div></div></div>`;
+    setSt('w','ok');
+  }catch(err){document.getElementById('cw').innerHTML=e(err.message);setSt('w','err');}
+}
+
+// BTC: CoinGecko (無料・CORS対応)
+async function fetchBTC(){
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
+    const d=await r.json();
+    const price=d.bitcoin.usd;
+    const pct=d.bitcoin.usd_24h_change;
+    const up=pct>=0;
+    document.getElementById('cb').innerHTML=`<div class="card-big" style="color:var(--btc);font-size:18px">$${price.toLocaleString('en-US',{maximumFractionDigits:0})}</div><div class="card-row"><span class="badge" style="color:${up?'var(--pos)':'var(--neg)'};background:${up?'#34d39920':'#f8717120'}">${up?'+':''}${pct.toFixed(2)}% 24h</span></div>`;
+    setSt('b','ok');
+  }catch(err){document.getElementById('cb').innerHTML=e(err.message);setSt('b','err');}
+}
+
+// 日経＋ニュース: Claude API
+async function fetchNikkeiNews(){
+  if(!AK){document.getElementById('cn').innerHTML=e('APIキー未設定');document.getElementById('cnews').innerHTML=e('APIキー未設定');setSt('n','err');setSt('news','err');return;}
+  fetchNikkei();
+  fetchNews();
+}
+
+async function callClaude(prompt){
+  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AK,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:800,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
+  if(!res.ok){const t=await res.text();throw new Error(`HTTP ${res.status}: ${t.slice(0,120)}`);}
+  const data=await res.json();
+  if(data.error)throw new Error(JSON.stringify(data.error));
+  const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+  if(!text)throw new Error('no text, types:'+data.content.map(b=>b.type).join(','));
+  return text;
+}
+function getJSON(text){const m=text.match(/\{[\s\S]*\}/);if(!m)throw new Error('JSON未検出');return JSON.parse(m[0]);}
+
+async function fetchNikkei(){
+  try{
+    const t=await callClaude('Search latest Nikkei 225 closing price today. Reply ONLY JSON no markdown: {"price":38500,"change":-200,"pct":-0.52}');
+    const d=getJSON(t);const u=d.change>=0;
+    document.getElementById('cn').innerHTML=`<div class="card-big" style="color:var(--ni)">¥${Math.round(d.price).toLocaleString('ja-JP')}</div><div class="card-row"><span style="font-size:11px;font-family:'Courier New',monospace;font-weight:600;color:${u?'var(--pos)':'var(--neg)'}">${u?'▲':'▼'} ${Math.abs(Math.round(d.change)).toLocaleString()}</span><span class="badge" style="color:${u?'var(--pos)':'var(--neg)'};background:${u?'#34d39920':'#f8717120'}">${u?'+':''}${Number(d.pct).toFixed(2)}%</span></div>`;
+    setSt('n','ok');
+  }catch(err){document.getElementById('cn').innerHTML=e(err.message);setSt('n','err');}
+}
+
+async function fetchNews(){
+  try{
+    const today=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+    const t=await callClaude(`Search today (${today}) top Japan news. Reply ONLY JSON no markdown: {"economy":["h1","h2","h3"],"entertainment":["h1","h2","h3"],"politics":["h1","h2","h3"]} Real Japanese headlines under 34 chars.`);
+    const d=getJSON(t);
+    const secs=[{key:'economy',label:'📈 経済',color:'var(--ni)'},{key:'entertainment',label:'🎬 エンタメ',color:'#a78bfa'},{key:'politics',label:'🏛 政治',color:'var(--btc)'}];
+    document.getElementById('cnews').innerHTML='<div class="news-sections">'+secs.map(s=>`<div><div class="news-section-title" style="color:${s.color}">${s.label}</div>${(d[s.key]||[]).map((h,i)=>`<div class="news-item"><span class="news-num" style="color:${s.color}">0${i+1}</span><span class="news-text">${h}</span></div>`).join('')}</div>`).join('')+'</div>';
+    setSt('news','ok');
+    document.getElementById('lu').textContent=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false});
+  }catch(err){document.getElementById('cnews').innerHTML=e(err.message);setSt('news','err');}
+}
+
+window.addEventListener('DOMContentLoaded',()=>{const s=localStorage.getItem('dk');if(s){AK=s;showMain();}renderSt();});
 </script>
 </body>
 </html>

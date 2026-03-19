@@ -4,180 +4,588 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Dashboard</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>My Dashboard</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #06090f; --card: #0c1220; --border: #192840;
-    --text: #dde4f0; --muted: #3a5070; --dim: #7a90a8;
-    --wx: #38bdf8; --ni: #fbbf24; --btc: #f97316; --news: #34d399;
-    --neg: #f87171; --pos: #34d399;
-  }
-  html, body { background: var(--bg); color: var(--text); min-height: 100vh; font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; }
-  body { padding: env(safe-area-inset-top, 20px) 16px env(safe-area-inset-bottom, 16px) 16px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
-  #setup { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 20px; padding: 32px 16px; }
-  #setup h1 { font-size: 20px; font-weight: 700; }
-  #setup p { font-size: 13px; color: var(--dim); text-align: center; line-height: 1.6; max-width: 300px; }
-  #setup a { color: var(--wx); }
-  #apiKeyInput { width: 100%; max-width: 340px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--text); font-family: 'Courier New', monospace; outline: none; }
-  #apiKeyInput:focus { border-color: var(--wx); }
-  #saveKey { width: 100%; max-width: 340px; background: var(--wx); color: #06090f; border: none; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; }
-  .setup-note { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; max-width: 300px; }
-  #main { display: none; }
-  .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; padding-top: 4px; }
-  .header-sub { font-size: 9px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; font-family: 'Courier New', monospace; }
-  .header-date { font-size: 17px; font-weight: 700; }
-  .header-time { font-size: 26px; font-family: 'Courier New', monospace; font-weight: 600; line-height: 1; text-align: right; }
-  .status-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
-  .status-dot { display: flex; align-items: center; gap: 3px; font-size: 9px; font-family: 'Courier New', monospace; }
-  .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
-  .refresh-btn { display: block; width: 100%; background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: var(--dim); font-size: 12px; font-family: inherit; cursor: pointer; margin-bottom: 12px; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 12px 14px; position: relative; overflow: hidden; animation: fadeUp .4s ease forwards; }
-  .card-accent { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
-  .card-label { font-size: 9px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-family: 'Courier New', monospace; margin-bottom: 8px; }
-  .card-big { font-size: 24px; font-family: 'Courier New', monospace; font-weight: 600; line-height: 1; margin-bottom: 5px; }
-  .card-sub { font-size: 11px; color: var(--dim); }
-  .card-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
-  .badge { font-size: 10px; font-family: 'Courier New', monospace; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
-  .minmax { display: flex; gap: 8px; margin-top: 6px; }
-  .minmax-item { display: flex; flex-direction: column; gap: 2px; }
-  .minmax-label { font-size: 8px; color: var(--muted); font-family: 'Courier New', monospace; text-transform: uppercase; }
-  .minmax-val { font-size: 15px; font-family: 'Courier New', monospace; font-weight: 600; }
-  .divider-v { width: 1px; background: var(--border); }
-  .spinner { width: 13px; height: 13px; border: 2px solid #ffffff15; border-top-color: currentColor; border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; flex-shrink: 0; }
-  .loading-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
-  .loading-row span { font-size: 11px; color: var(--muted); }
-  .news-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; position: relative; overflow: hidden; animation: fadeUp .4s ease .15s both; }
-  .news-sections { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 10px; }
-  .news-section-title { font-size: 12px; font-weight: 700; margin-bottom: 7px; }
-  .news-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 7px; }
-  .news-num { font-size: 9px; font-family: 'Courier New', monospace; margin-top: 2px; flex-shrink: 0; opacity: .5; }
-  .news-text { font-size: 12px; color: var(--dim); line-height: 1.55; }
-  .footer { margin-top: 10px; text-align: right; font-size: 9px; color: var(--muted); font-family: 'Courier New', monospace; }
-  .reset-link { font-size: 10px; color: var(--muted); text-decoration: underline; cursor: pointer; background: none; border: none; font-family: inherit; }
-  .err { color: var(--neg); font-size: 10px; line-height: 1.5; word-break: break-all; padding-top: 4px; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:#f0f2f5;
+  color:#0f172a;
+  font-family:'Meiryo','メイリオ','Hiragino Kaku Gothic ProN',sans-serif;
+  font-size:14px;
+  padding:env(safe-area-inset-top,16px) 14px env(safe-area-inset-bottom,20px);
+  min-height:100vh;
+}
+@keyframes spin { to{transform:rotate(360deg);} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);} }
+@keyframes pulse { 0%,100%{opacity:1;}50%{opacity:.3;} }
+
+/* HEADER */
+.hdr { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px; }
+.hdr-left {}
+.hdr-sub { font-size:10px; color:#94a3b8; letter-spacing:.08em; text-transform:uppercase; margin-bottom:2px; }
+.hdr-date { font-size:17px; font-weight:700; }
+.hdr-time { font-size:26px; font-weight:700; text-align:right; line-height:1; }
+.dots { display:flex; gap:6px; justify-content:flex-end; margin-top:3px; flex-wrap:wrap; }
+.dot-item { display:flex; align-items:center; gap:3px; font-size:9px; }
+.dot { width:5px; height:5px; border-radius:50%; display:inline-block; }
+
+/* CARD BASE */
+.card {
+  background:#fff; border-radius:12px;
+  box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 6px rgba(0,0,0,.04);
+  position:relative; overflow:hidden;
+  animation:fadeUp .3s ease forwards;
+}
+.card-top { position:absolute; top:0; left:0; right:0; height:3px; }
+.card-inner { padding:12px 14px 14px; }
+.card-lbl { font-size:10px; color:#94a3b8; letter-spacing:.05em; text-transform:uppercase; margin-bottom:5px; }
+.card-title { font-size:14px; font-weight:700; color:#475569; margin-bottom:4px; }
+.num { font-size:22px; font-weight:700; line-height:1; }
+.num-sm { font-size:16px; font-weight:700; line-height:1; }
+.badge { font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; display:inline-block; }
+.up { color:#16a34a; } .dn { color:#dc2626; }
+.up-bg { background:#dcfce7; } .dn-bg { background:#fee2e2; }
+.row { display:flex; gap:6px; align-items:center; margin-top:4px; flex-wrap:wrap; }
+
+/* LINK CARD */
+.lcard { text-decoration:none; color:inherit; display:block; transition:transform .15s,box-shadow .15s; }
+.lcard:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.1); }
+.lcard:active { opacity:.8; transform:translateY(0); }
+.link-hint { font-size:11px; color:#94a3b8; margin-top:4px; }
+
+/* REFRESH */
+.refresh { display:block; width:100%; background:#fff; border:1.5px solid #e2e8f0; border-radius:9px; padding:9px; color:#64748b; font-size:13px; font-family:inherit; cursor:pointer; margin-bottom:10px; }
+
+/* GRIDS */
+.mb10 { margin-bottom:10px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+.grid4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; }
+
+/* WEATHER */
+.wx-main { display:flex; align-items:center; gap:10px; }
+.wx-sym { font-size:26px; line-height:1; }
+.wx-minmax { display:flex; gap:8px; margin-top:3px; font-size:12px; }
+.wx-week { display:flex; gap:4px; margin-top:10px; overflow-x:auto; padding-bottom:2px; }
+.wx-day { flex:1; min-width:38px; text-align:center; background:#f8fafc; border-radius:8px; padding:6px 4px; }
+.wx-day-label { font-size:9px; color:#94a3b8; margin-bottom:3px; }
+.wx-day-sym { font-size:16px; line-height:1; margin-bottom:2px; }
+.wx-day-hi { font-size:11px; font-weight:700; color:#ef4444; }
+.wx-day-lo { font-size:11px; color:#3b82f6; }
+
+/* CONDITION (パワプロ) */
+.cond-section { padding:12px 14px 14px; }
+.cond-row { display:flex; gap:6px; margin-top:8px; }
+.cond-btn {
+  flex:1; padding:8px 4px; border:2px solid #e2e8f0; border-radius:8px;
+  background:#fff; cursor:pointer; font-size:16px; text-align:center;
+  font-family:inherit; transition:all .15s;
+}
+.cond-btn.active { border-color:currentColor; background:currentColor; }
+.cond-btn.active span { color:#fff; }
+.cond-btn span { display:block; font-size:10px; margin-top:2px; font-weight:700; }
+.time-row { display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap; }
+.time-block { display:flex; flex-direction:column; gap:3px; flex:1; min-width:120px; }
+.time-lbl { font-size:10px; color:#94a3b8; }
+.time-input {
+  border:1.5px solid #e2e8f0; border-radius:7px; padding:7px 10px;
+  font-size:15px; font-weight:700; color:#0f172a; font-family:inherit;
+  background:#fff; width:100%; outline:none;
+}
+.time-input:focus { border-color:#3b82f6; }
+.save-btn {
+  background:#0f172a; color:#fff; border:none; border-radius:8px;
+  padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+  margin-top:10px;
+}
+.save-btn:active { opacity:.8; }
+.saved-msg { font-size:11px; color:#16a34a; margin-top:4px; display:none; }
+
+/* HISTORY */
+.hist-toggle { font-size:11px; color:#3b82f6; cursor:pointer; background:none; border:none; font-family:inherit; margin-top:8px; text-decoration:underline; }
+.hist-table { margin-top:8px; border-collapse:collapse; width:100%; display:none; }
+.hist-table th, .hist-table td { font-size:11px; padding:4px 6px; border-bottom:1px solid #f1f5f9; text-align:left; }
+.hist-table th { color:#94a3b8; font-weight:700; }
+
+/* NEWS */
+.news-item { display:flex; gap:6px; margin-bottom:8px; text-decoration:none; color:inherit; border-radius:7px; padding:3px; transition:background .15s; }
+.news-item:hover { background:#f8fafc; }
+.news-cat { font-size:9px; font-weight:700; padding:2px 5px; border-radius:3px; flex-shrink:0; margin-top:2px; }
+.news-text { font-size:13px; color:#334155; line-height:1.5; }
+.news-more { font-size:11px; color:#3b82f6; text-decoration:none; display:block; margin-top:6px; text-align:right; }
+
+/* TODO */
+.todo-tabs { display:flex; gap:8px; margin-bottom:10px; }
+.todo-tab { flex:1; padding:7px; border:1.5px solid #e2e8f0; border-radius:8px; background:#fff; cursor:pointer; font-size:13px; font-weight:700; font-family:inherit; color:#64748b; transition:all .15s; }
+.todo-tab.active { background:#0f172a; color:#fff; border-color:#0f172a; }
+.todo-list { list-style:none; margin-bottom:8px; }
+.todo-list li { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid #f1f5f9; }
+.todo-check { width:16px; height:16px; border-radius:4px; border:2px solid #cbd5e1; cursor:pointer; flex-shrink:0; appearance:none; background:#fff; }
+.todo-check:checked { background:#0f172a; border-color:#0f172a; }
+.todo-check:checked + .todo-label { text-decoration:line-through; color:#94a3b8; }
+.todo-label { flex:1; font-size:13px; }
+.todo-del { background:none; border:none; cursor:pointer; color:#cbd5e1; font-size:14px; padding:0 4px; font-family:inherit; }
+.todo-del:hover { color:#ef4444; }
+.todo-add { display:flex; gap:6px; margin-top:6px; }
+.todo-input { flex:1; border:1.5px solid #e2e8f0; border-radius:7px; padding:7px 10px; font-size:13px; font-family:inherit; outline:none; }
+.todo-input:focus { border-color:#0f172a; }
+.todo-btn { background:#0f172a; color:#fff; border:none; border-radius:7px; padding:7px 14px; font-size:13px; cursor:pointer; font-family:inherit; font-weight:700; }
+
+/* KEIBA */
+.keiba-links { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.keiba-link { display:flex; align-items:center; gap:8px; text-decoration:none; color:#0f172a; background:#f8fafc; border-radius:8px; padding:10px 12px; font-size:13px; transition:background .15s; }
+.keiba-link:hover { background:#f1f5f9; }
+.keiba-link-arrow { color:#94a3b8; margin-left:auto; }
+
+/* SPINNER */
+.sp { width:13px; height:13px; border:2px solid #e2e8f0; border-top-color:currentColor; border-radius:50%; animation:spin .8s linear infinite; display:inline-block; flex-shrink:0; }
+.ld { display:flex; align-items:center; gap:7px; padding:8px 0; color:#94a3b8; font-size:13px; }
+.err { color:#ef4444; font-size:11px; line-height:1.5; word-break:break-all; padding-top:4px; }
+
+/* SECTION LABEL */
+.sec-lbl { font-size:11px; color:#94a3b8; letter-spacing:.06em; text-transform:uppercase; margin:14px 0 6px; }
 </style>
 </head>
 <body>
-<div id="setup">
-  <div style="font-size:32px">📊</div>
-  <h1>Personal Dashboard</h1>
-  <p>Anthropic APIキーを入力。キーはこのデバイスにのみ保存されます。</p>
-  <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
-  <button id="saveKey" onclick="saveApiKey()">保存して開始</button>
-  <p class="setup-note">取得先: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys</p>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="hdr-sub">▸ my dashboard · 横浜</div>
+    <div class="hdr-date" id="dateStr">—</div>
+  </div>
+  <div>
+    <div class="hdr-time" id="timeStr">--:--:--</div>
+    <div class="dots" id="dots"></div>
+  </div>
 </div>
-<div id="main">
-  <div class="header">
-    <div><div class="header-sub">▸ dashboard · 横浜</div><div class="header-date" id="dateStr">—</div></div>
-    <div><div class="header-time" id="timeStr">--:--:--</div><div class="status-row" id="statusRow"></div></div>
+
+<!-- ROW1: 天気 -->
+<div class="sec-lbl">天気</div>
+<div class="card mb10" onclick="window.open('https://weather.yahoo.co.jp/weather/jp/14/4610.html','_blank')" style="cursor:pointer">
+  <div class="card-top" style="background:linear-gradient(90deg,#38bdf8,#7dd3fc)"></div>
+  <div class="card-inner">
+    <div class="card-lbl">📍 横浜 ↗</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start">
+      <div id="cwToday"><div class="ld"><span class="sp" style="color:#38bdf8"></span></div></div>
+      <div id="cwWeek" style="overflow-x:auto"><div class="ld"><span class="sp" style="color:#38bdf8"></span></div></div>
+    </div>
   </div>
-  <button class="refresh-btn" onclick="loadAll()">↻ 更新</button>
-  <div class="grid3">
-    <div class="card"><div class="card-accent" style="background:linear-gradient(90deg,var(--wx),transparent)"></div><div class="card-label">📍 天気</div><div id="cw"><div class="loading-row"><span class="spinner" style="color:var(--wx)"></span><span>取得中</span></div></div></div>
-    <div class="card"><div class="card-accent" style="background:linear-gradient(90deg,var(--ni),transparent)"></div><div class="card-label">🇯🇵 日経</div><div id="cn"><div class="loading-row"><span class="spinner" style="color:var(--ni)"></span><span>取得中</span></div></div></div>
-    <div class="card"><div class="card-accent" style="background:linear-gradient(90deg,var(--btc),transparent)"></div><div class="card-label">₿ BTC</div><div id="cb"><div class="loading-row"><span class="spinner" style="color:var(--btc)"></span><span>取得中</span></div></div></div>
-  </div>
-  <div class="news-card">
-    <div class="card-accent" style="background:linear-gradient(90deg,var(--news),var(--ni),var(--btc))"></div>
-    <div class="card-label">📰 今日のニュース</div>
-    <div id="cnews"><div class="loading-row"><span class="spinner" style="color:var(--news)"></span><span>取得中…</span></div></div>
-  </div>
-  <div class="footer"><span id="lu">—</span> JST &nbsp;·&nbsp;<button class="reset-link" onclick="resetKey()">APIキー変更</button></div>
 </div>
+
+<!-- ROW2: 指数 -->
+<div class="sec-lbl">マーケット</div>
+<div class="card mb10">
+  <div class="card-top" style="background:linear-gradient(90deg,#f59e0b,#f97316,#6366f1)"></div>
+  <div class="card-inner" style="padding:10px 14px 12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <a href="https://indexes.nikkei.co.jp/nkave" target="_blank" style="text-decoration:none;color:inherit">
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">🇯🇵 日経225</div>
+        <div id="cn"><div class="ld"><span class="sp" style="color:#f59e0b"></span></div></div>
+      </a>
+      <a href="https://www.binance.com/ja/trade/BTC_USDT" target="_blank" style="text-decoration:none;color:inherit">
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">₿ BTC/USD</div>
+        <div id="cb"><div class="ld"><span class="sp" style="color:#f97316"></span></div></div>
+      </a>
+      <a href="https://finance.yahoo.com/quote/%5EDJI" target="_blank" style="text-decoration:none;color:inherit">
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">🇺🇸 NYダウ</div>
+        <div style="font-size:12px;font-weight:700;color:#475569;margin-top:4px;background:#f8fafc;border-radius:8px;padding:7px 8px">NYダウ</div>
+      </a>
+    </div>
+    <div style="border-top:1px solid #f1f5f9;margin-top:10px;padding-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px">
+      <a href="https://finance.yahoo.co.jp/quote/4755.T" target="_blank" style="text-decoration:none;color:inherit;background:#f8fafc;border-radius:8px;padding:7px 8px;display:block">
+        <div style="font-size:12px;font-weight:700;color:#475569">4755 楽天G</div>
+      </a>
+      <a href="https://finance.yahoo.co.jp/quote/9202.T" target="_blank" style="text-decoration:none;color:inherit;background:#f8fafc;border-radius:8px;padding:7px 8px;display:block">
+        <div style="font-size:12px;font-weight:700;color:#475569">9202 ANA</div>
+      </a>
+      <a href="https://finance.yahoo.co.jp/quote/218A.T" target="_blank" style="text-decoration:none;color:inherit;background:#f8fafc;border-radius:8px;padding:7px 8px;display:block">
+        <div style="font-size:12px;font-weight:700;color:#475569">218A LBW</div>
+      </a>
+      <a href="https://finance.yahoo.com/quote/XYL" target="_blank" style="text-decoration:none;color:inherit;background:#f8fafc;border-radius:8px;padding:7px 8px;display:block">
+        <div style="font-size:12px;font-weight:700;color:#475569">XYL Xylem</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ROW4: 体調ログ -->
+<div class="sec-lbl">今日のログ</div>
+<div class="card mb10">
+  <div class="card-top" style="background:linear-gradient(90deg,#a855f7,#c084fc)"></div>
+  <div class="cond-section">
+    <div class="card-lbl">💪 体調</div>
+    <div class="cond-row">
+      <button class="cond-btn" data-val="5" style="color:#16a34a" onclick="setCond(5)">◎<span>絶好調</span></button>
+      <button class="cond-btn" data-val="4" style="color:#3b82f6" onclick="setCond(4)">○<span>好調</span></button>
+      <button class="cond-btn" data-val="3" style="color:#f59e0b" onclick="setCond(3)">△<span>普通</span></button>
+      <button class="cond-btn" data-val="2" style="color:#f97316" onclick="setCond(2)">▽<span>不調</span></button>
+      <button class="cond-btn" data-val="1" style="color:#ef4444" onclick="setCond(1)">×<span>絶不調</span></button>
+    </div>
+    <div class="time-row">
+      <div class="time-block">
+        <div class="time-lbl">🌅 起床時間</div>
+        <input type="time" class="time-input" id="wakeTime">
+      </div>
+    </div>
+    <div class="time-row" style="margin-top:8px">
+      <div class="time-block">
+        <div class="time-lbl">📝 ジャーナリング開始時間</div>
+        <input type="time" class="time-input" id="diaryTime">
+      </div>
+    </div>
+    <div class="time-row" style="margin-top:8px">
+      <div class="time-block">
+        <div class="time-lbl">🌙 就寝時間</div>
+        <input type="time" class="time-input" id="sleepTime">
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveLog()">保存</button>
+    <div class="saved-msg" id="savedMsg">✓ 保存しました</div>
+    <button class="hist-toggle" onclick="toggleHist()">📅 過去の記録を見る</button>
+    <table class="hist-table" id="histTable">
+      <thead><tr><th>日付</th><th>体調</th><th>起床</th><th>就寝</th><th>日記</th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ROW5: ニュース -->
+<div class="sec-lbl">ニュース</div>
+<div class="card mb10">
+  <div class="card-top" style="background:linear-gradient(90deg,#f97316,#f59e0b,#22c55e,#a855f7,#ef4444)"></div>
+  <div class="card-inner">
+    <div class="card-lbl">📰 今日のホットトピック · NHK</div>
+    <div id="cnews"><div class="ld"><span class="sp" style="color:#22c55e"></span>取得中</div></div>
+  </div>
+</div>
+
+<!-- ROW6: TODO -->
+<div class="sec-lbl">TODO</div>
+<div class="card mb10">
+  <div class="card-top" style="background:linear-gradient(90deg,#0ea5e9,#38bdf8)"></div>
+  <div class="card-inner">
+    <div class="card-lbl">✅ タスク</div>
+    <div class="todo-tabs">
+      <button class="todo-tab active" onclick="switchTab('private')">🏠 Private</button>
+      <button class="todo-tab" onclick="switchTab('work')">💼 Work</button>
+    </div>
+    <ul class="todo-list" id="todoList"></ul>
+    <div class="todo-add">
+      <input class="todo-input" id="todoInput" placeholder="タスクを追加..." onkeydown="if(event.key==='Enter')addTodo()">
+      <button class="todo-btn" onclick="addTodo()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROW7: 競馬 -->
+<div class="sec-lbl">競馬</div>
+<div class="card mb10">
+  <div class="card-top" style="background:linear-gradient(90deg,#ef4444,#f97316)"></div>
+  <div class="card-inner">
+    <div class="card-lbl">🏇 今週の重賞</div>
+    <div class="keiba-links" style="margin-top:4px">
+      <a href="https://race.netkeiba.com/top/" target="_blank" class="keiba-link">
+        <span>🏆</span><span>今週の重賞レース一覧</span><span class="keiba-link-arrow">↗</span>
+      </a>
+      <a href="https://www.netkeiba.com/" target="_blank" class="keiba-link">
+        <span>📊</span><span>netkeiba トップ</span><span class="keiba-link-arrow">↗</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:right;font-size:10px;color:#94a3b8;margin-top:4px">
+  <span id="lu">—</span> 更新
+</div>
+<button class="refresh" onclick="loadAll()" style="margin-top:8px;margin-bottom:0">↻ 更新</button>
+
 <script>
-let AK='';
-const SC={w:'var(--wx)',n:'var(--ni)',b:'var(--btc)',news:'var(--news)'};
-const SL={w:'WX',n:'NI225',b:'BTC',news:'NEWS'};
-const ST={w:'loading',n:'loading',b:'loading',news:'loading'};
-
-function saveApiKey(){const v=document.getElementById('apiKeyInput').value.trim();if(!v.startsWith('sk-ant')){alert('形式が違います');return;}localStorage.setItem('dk',v);AK=v;showMain();}
-function resetKey(){if(!confirm('APIキーを削除しますか？'))return;localStorage.removeItem('dk');location.reload();}
-function showMain(){document.getElementById('setup').style.display='none';document.getElementById('main').style.display='block';startClock();loadAll();}
-function startClock(){function t(){const n=new Date();document.getElementById('timeStr').textContent=n.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});document.getElementById('dateStr').textContent=n.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});}t();setInterval(t,1000);}
-function setSt(k,s){ST[k]=s;renderSt();}
-function renderSt(){document.getElementById('statusRow').innerHTML=Object.keys(ST).map(k=>{const s=ST[k],c=SC[k];const ds=s==='ok'?`background:${c}`:s==='err'?`background:var(--neg)`:`background:transparent;border:1px solid ${c};animation:pulse 1.5s infinite`;const tc=s==='ok'?c:s==='err'?'var(--neg)':c+'80';return`<span class="status-dot" style="color:${tc}"><span class="dot" style="${ds}"></span>${SL[k]}</span>`;}).join('');}
-function e(msg){return`<div class="err">❌ ${msg}</div>`;}
-function loadAll(){['w','n','b','news'].forEach(k=>{ST[k]='loading';});renderSt();document.getElementById('lu').textContent='—';
-  document.getElementById('cw').innerHTML=`<div class="loading-row"><span class="spinner" style="color:var(--wx)"></span><span>取得中</span></div>`;
-  document.getElementById('cn').innerHTML=`<div class="loading-row"><span class="spinner" style="color:var(--ni)"></span><span>取得中</span></div>`;
-  document.getElementById('cb').innerHTML=`<div class="loading-row"><span class="spinner" style="color:var(--btc)"></span><span>取得中</span></div>`;
-  document.getElementById('cnews').innerHTML=`<div class="loading-row"><span class="spinner" style="color:var(--news)"></span><span>取得中…</span></div>`;
-  fetchWeather();fetchBTC();fetchNikkeiNews();}
-
-// 天気: Open-Meteo (無料・CORS対応)
-async function fetchWeather(){
-  try{
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.4437&longitude=139.638&daily=temperature_2m_max,temperature_2m_min,weathercode&current_weather=true&timezone=Asia/Tokyo&forecast_days=1');
-    const d=await r.json();
-    const code=d.current_weather.weathercode;
-    const cond=code===0?'快晴':code<=1?'晴れ':code<=3?'曇り':code<=67?'雨':code<=77?'雪':'にわか雨';
-    const now=Math.round(d.current_weather.temperature);
-    const max=Math.round(d.daily.temperature_2m_max[0]);
-    const min=Math.round(d.daily.temperature_2m_min[0]);
-    document.getElementById('cw').innerHTML=`<div class="card-big" style="color:var(--wx)">${now}°</div><div class="card-sub">${cond}</div><div class="minmax"><div class="minmax-item"><div class="minmax-label">最高</div><div class="minmax-val" style="color:#fca5a5">${max}°</div></div><div class="divider-v"></div><div class="minmax-item"><div class="minmax-label">最低</div><div class="minmax-val" style="color:#93c5fd">${min}°</div></div></div>`;
-    setSt('w','ok');
-  }catch(err){document.getElementById('cw').innerHTML=e(err.message);setSt('w','err');}
+// ── CLOCK ──
+function startClock() {
+  function t() {
+    const n = new Date();
+    document.getElementById('timeStr').textContent = n.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+    document.getElementById('dateStr').textContent = n.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  }
+  t(); setInterval(t, 1000);
 }
 
-// BTC: CoinGecko (無料・CORS対応)
-async function fetchBTC(){
-  try{
-    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
-    const d=await r.json();
-    const price=d.bitcoin.usd;
-    const pct=d.bitcoin.usd_24h_change;
-    const up=pct>=0;
-    document.getElementById('cb').innerHTML=`<div class="card-big" style="color:var(--btc);font-size:18px">$${price.toLocaleString('en-US',{maximumFractionDigits:0})}</div><div class="card-row"><span class="badge" style="color:${up?'var(--pos)':'var(--neg)'};background:${up?'#34d39920':'#f8717120'}">${up?'+':''}${pct.toFixed(2)}% 24h</span></div>`;
-    setSt('b','ok');
-  }catch(err){document.getElementById('cb').innerHTML=e(err.message);setSt('b','err');}
-}
+// ── STATUS DOTS ──
+const KEYS = ['w','b','news'];
+const COLORS = {w:'#38bdf8', b:'#f97316', news:'#22c55e'};
+const LABELS = {w:'天気', b:'BTC', news:'NEWS'};
+const ST = {};
+KEYS.forEach(k => ST[k]='loading');
 
-// 日経＋ニュース: Claude API
-async function fetchNikkeiNews(){
-  if(!AK){document.getElementById('cn').innerHTML=e('APIキー未設定');document.getElementById('cnews').innerHTML=e('APIキー未設定');setSt('n','err');setSt('news','err');return;}
+function setSt(k,s) { ST[k]=s; renderDots(); }
+function renderDots() {
+  document.getElementById('dots').innerHTML = KEYS.map(k => {
+    const s=ST[k], c=COLORS[k];
+    const ds = s==='ok'?`background:${c}`:s==='err'?`background:#ef4444`:`background:transparent;border:1.5px solid ${c};animation:pulse 1.5s infinite`;
+    const tc = s==='ok'?c:s==='err'?'#ef4444':c+'80';
+    return `<span class="dot-item" style="color:${tc}"><span class="dot" style="${ds}"></span>${LABELS[k]}</span>`;
+  }).join('');
+}
+function ld(c) { return `<div class="ld"><span class="sp" style="color:${c}"></span>取得中</div>`; }
+function errHTML(m) { return `<div class="err">❌ ${m}</div>`; }
+
+// ── LOAD ALL ──
+function loadAll() {
+  KEYS.forEach(k => ST[k]='loading');
+  renderDots();
+  document.getElementById('lu').textContent = '—';
+  document.getElementById('cwToday').innerHTML = ld(COLORS.w);
+  document.getElementById('cwWeek').innerHTML = '';
+  document.getElementById('cb').innerHTML = ld(COLORS.b);
+  document.getElementById('cn').innerHTML = ld('#f59e0b');
+  document.getElementById('cnews').innerHTML = ld(COLORS.news);
+  fetchWeather();
+  fetchBTC();
   fetchNikkei();
   fetchNews();
 }
 
-async function callClaude(prompt){
-  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AK,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:800,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-  if(!res.ok){const t=await res.text();throw new Error(`HTTP ${res.status}: ${t.slice(0,120)}`);}
-  const data=await res.json();
-  if(data.error)throw new Error(JSON.stringify(data.error));
-  const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-  if(!text)throw new Error('no text, types:'+data.content.map(b=>b.type).join(','));
-  return text;
-}
-function getJSON(text){const m=text.match(/\{[\s\S]*\}/);if(!m)throw new Error('JSON未検出');return JSON.parse(m[0]);}
+// ── WEATHER ──
+const WX_SYM = c => c===0?'☀️':c<=1?'🌤️':c<=3?'☁️':c<=48?'🌫️':c<=67?'🌧️':c<=77?'❄️':'🌦️';
+const WX_COND = c => c===0?'快晴':c<=1?'晴れ':c<=2?'薄曇り':c<=3?'曇り':c<=48?'霧':c<=67?'雨':c<=77?'雪':'にわか雨';
+const DAYS = ['日','月','火','水','木','金','土'];
 
-async function fetchNikkei(){
-  try{
-    const t=await callClaude('Search latest Nikkei 225 closing price today. Reply ONLY JSON no markdown: {"price":38500,"change":-200,"pct":-0.52}');
-    const d=getJSON(t);const u=d.change>=0;
-    document.getElementById('cn').innerHTML=`<div class="card-big" style="color:var(--ni)">¥${Math.round(d.price).toLocaleString('ja-JP')}</div><div class="card-row"><span style="font-size:11px;font-family:'Courier New',monospace;font-weight:600;color:${u?'var(--pos)':'var(--neg)'}">${u?'▲':'▼'} ${Math.abs(Math.round(d.change)).toLocaleString()}</span><span class="badge" style="color:${u?'var(--pos)':'var(--neg)'};background:${u?'#34d39920':'#f8717120'}">${u?'+':''}${Number(d.pct).toFixed(2)}%</span></div>`;
-    setSt('n','ok');
-  }catch(err){document.getElementById('cn').innerHTML=e(err.message);setSt('n','err');}
+async function fetchWeather() {
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=35.4437&longitude=139.638'
+      + '&daily=temperature_2m_max,temperature_2m_min,weather_code'
+      + '&current_weather=true&timezone=Asia%2FTokyo&forecast_days=7';
+    const r = await fetch(url);
+    const d = await r.json();
+    const code = d.current_weather.weathercode;
+    const now = Math.round(d.current_weather.temperature);
+    const max0 = Math.round(d.daily.temperature_2m_max[0]);
+    const min0 = Math.round(d.daily.temperature_2m_min[0]);
+    const dates = d.daily.time || [];
+    const wcodes = d.daily.weather_code || d.daily.weathercode || [];
+
+    const weekHtml = dates.map((dt, i) => {
+      const dayLabel = i === 0 ? '今日' : DAYS[new Date(dt + 'T00:00:00').getDay()];
+      const hi = Math.round(d.daily.temperature_2m_max[i]);
+      const lo = Math.round(d.daily.temperature_2m_min[i]);
+      const sym = WX_SYM(wcodes[i] || 0);
+      return `<div class="wx-day" style="${i===0?'background:#eff6ff':''}">
+        <div class="wx-day-label" style="${i===0?'color:#3b82f6;font-weight:700':''}">${dayLabel}</div>
+        <div class="wx-day-sym">${sym}</div>
+        <div class="wx-day-hi">${hi}°</div>
+        <div class="wx-day-lo">${lo}°</div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('cwToday').innerHTML = `
+      <div class="wx-main">
+        <div class="wx-sym">${WX_SYM(code)}</div>
+        <div>
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span class="num" style="color:#0ea5e9">${now}°</span>
+            <span style="font-size:14px;font-weight:700;color:#334155">${WX_COND(code)}</span>
+          </div>
+          <div class="wx-minmax">
+            <span style="color:#ef4444;font-weight:700">↑${max0}°</span>
+            <span style="color:#cbd5e1">|</span>
+            <span style="color:#3b82f6;font-weight:700">↓${min0}°</span>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('cwWeek').innerHTML = `<div class="wx-week">${weekHtml}</div>`;
+    setSt('w','ok');
+  } catch(e) { document.getElementById('cwToday').innerHTML = errHTML(e.message); setSt('w','err'); }
 }
 
-async function fetchNews(){
-  try{
-    const today=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
-    const t=await callClaude(`Search today (${today}) top Japan news. Reply ONLY JSON no markdown: {"economy":["h1","h2","h3"],"entertainment":["h1","h2","h3"],"politics":["h1","h2","h3"]} Real Japanese headlines under 34 chars.`);
-    const d=getJSON(t);
-    const secs=[{key:'economy',label:'📈 経済',color:'var(--ni)'},{key:'entertainment',label:'🎬 エンタメ',color:'#a78bfa'},{key:'politics',label:'🏛 政治',color:'var(--btc)'}];
-    document.getElementById('cnews').innerHTML='<div class="news-sections">'+secs.map(s=>`<div><div class="news-section-title" style="color:${s.color}">${s.label}</div>${(d[s.key]||[]).map((h,i)=>`<div class="news-item"><span class="news-num" style="color:${s.color}">0${i+1}</span><span class="news-text">${h}</span></div>`).join('')}</div>`).join('')+'</div>';
-    setSt('news','ok');
-    document.getElementById('lu').textContent=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false});
-  }catch(err){document.getElementById('cnews').innerHTML=e(err.message);setSt('news','err');}
+// ── BTC ──
+async function fetchBTC() {
+  try {
+    const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const price = parseFloat(d.lastPrice);
+    const pct = parseFloat(d.priceChangePercent);
+    const up = pct >= 0;
+    document.getElementById('cb').innerHTML = `
+      <div class="num" style="color:#f97316">$${price.toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+      <div class="row"><span class="badge ${up?'up up-bg':'dn dn-bg'}">${up?'+':''}${pct.toFixed(2)}% 24h</span></div>`;
+    setSt('b','ok');
+  } catch(e) { document.getElementById('cb').innerHTML = errHTML(e.message); setSt('b','err'); }
 }
 
-window.addEventListener('DOMContentLoaded',()=>{const s=localStorage.getItem('dk');if(s){AK=s;showMain();}renderSt();});
+// ── NIKKEI ──
+async function fetchNikkei() {
+  try {
+    const r = await fetch('https://query2.finance.yahoo.com/v8/finance/chart/%5EN225?interval=1d&range=2d');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const meta = d.chart.result[0].meta;
+    const price = meta.regularMarketPrice;
+    const prev = meta.previousClose || meta.chartPreviousClose;
+    const pct = ((price - prev) / prev) * 100;
+    const up = price >= prev;
+    document.getElementById('cn').innerHTML = `
+      <div class="num" style="color:#f59e0b">¥${Math.round(price).toLocaleString('ja-JP')}</div>
+      <div class="row"><span class="badge ${up?'up up-bg':'dn dn-bg'}">${up?'+':''}${pct.toFixed(2)}%</span></div>`;
+  } catch(e) {
+    document.getElementById('cn').innerHTML = '<div style="font-size:12px;font-weight:700;color:#475569;background:#f8fafc;border-radius:8px;padding:7px 8px">日経225</div>';
+  }
+}
+
+// ── NEWS ──
+async function fetchNews() {
+  const cats = [
+    { label:'政治', color:'#f97316', bg:'#fff7ed', url:'https://www3.nhk.or.jp/rss/news/cat4.xml' },
+    { label:'経済', color:'#f59e0b', bg:'#fffbeb', url:'https://www3.nhk.or.jp/rss/news/cat6.xml' },
+    { label:'エンタメ', color:'#a855f7', bg:'#faf5ff', url:'https://www3.nhk.or.jp/rss/news/cat5.xml' },
+    { label:'スポーツ', color:'#22c55e', bg:'#f0fdf4', url:'https://www3.nhk.or.jp/rss/news/cat7.xml' },
+  ];
+  const results = await Promise.allSettled(cats.map(async c => {
+    const r = await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(c.url));
+    const d = await r.json();
+    const item = (d.items || [])[0];
+    return { ...c, title: item ? item.title.trim() : null, link: item ? item.link : 'https://www3.nhk.or.jp/news/' };
+  }));
+  const items = cats.map((c, i) => {
+    const r = results[i];
+    return r.status === 'fulfilled' ? r.value : { ...c, title: null, link: 'https://www3.nhk.or.jp/news/' };
+  });
+  document.getElementById('cnews').innerHTML =
+    items.map(c => `
+      <a href="${c.link}" target="_blank" class="news-item">
+        <span class="news-cat" style="color:${c.color};background:${c.bg}">${c.label}</span>
+        <span class="news-text">${c.title || 'NHK ' + c.label}</span>
+      </a>`).join('') +
+    '<a href="https://www3.nhk.or.jp/news/" target="_blank" class="news-more">その他のニュースはこちら ↗</a>';
+  setSt('news', 'ok');
+  document.getElementById('lu').textContent = new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+// ── CONDITION LOG ──
+let todayCondVal = 0;
+const todayKey = () => new Date().toISOString().slice(0,10);
+
+function setCond(val) {
+  todayCondVal = val;
+  const colors = {5:'#16a34a',4:'#3b82f6',3:'#f59e0b',2:'#f97316',1:'#ef4444'};
+  document.querySelectorAll('.cond-btn').forEach(btn => {
+    const v = parseInt(btn.dataset.val);
+    btn.classList.toggle('active', v === val);
+    if (v === val) btn.style.background = colors[val];
+    else btn.style.background = '#fff';
+  });
+}
+
+function saveLog() {
+  const logs = JSON.parse(localStorage.getItem('dailyLogs')||'{}');
+  logs[todayKey()] = {
+    cond: todayCondVal,
+    wake: document.getElementById('wakeTime').value,
+    sleep: document.getElementById('sleepTime').value,
+    diary: document.getElementById('diaryTime').value,
+  };
+  localStorage.setItem('dailyLogs', JSON.stringify(logs));
+  const msg = document.getElementById('savedMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display='none', 2000);
+  renderHist();
+}
+
+function loadTodayLog() {
+  const logs = JSON.parse(localStorage.getItem('dailyLogs')||'{}');
+  const today = logs[todayKey()];
+  if (today) {
+    if (today.cond) setCond(today.cond);
+    if (today.wake) document.getElementById('wakeTime').value = today.wake;
+    if (today.sleep) document.getElementById('sleepTime').value = today.sleep;
+    if (today.diary) document.getElementById('diaryTime').value = today.diary;
+  }
+}
+
+function toggleHist() {
+  const tbl = document.getElementById('histTable');
+  const shown = tbl.style.display === 'table';
+  tbl.style.display = shown ? 'none' : 'table';
+  if (!shown) renderHist();
+}
+
+function renderHist() {
+  const logs = JSON.parse(localStorage.getItem('dailyLogs')||'{}');
+  const COND_LABEL = {5:'◎絶好調',4:'○好調',3:'△普通',2:'▽不調',1:'×絶不調','':'—'};
+  const sorted = Object.keys(logs).sort().reverse().slice(0,14);
+  document.getElementById('histBody').innerHTML = sorted.map(dt => {
+    const l = logs[dt];
+    return `<tr><td>${dt}</td><td>${COND_LABEL[l.cond||'']||'—'}</td><td>${l.wake||'—'}</td><td>${l.sleep||'—'}</td><td>${l.diary||'—'}</td></tr>`;
+  }).join('');
+}
+
+// ── TODO ──
+let currentTab = 'private';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.todo-tab').forEach((el,i) => {
+    el.classList.toggle('active', (i===0&&tab==='private')||(i===1&&tab==='work'));
+  });
+  renderTodos();
+}
+
+function getTodos() {
+  return JSON.parse(localStorage.getItem('todos')||'{"private":[],"work":[]}');
+}
+function saveTodos(todos) {
+  localStorage.setItem('todos', JSON.stringify(todos));
+}
+
+function renderTodos() {
+  const todos = getTodos();
+  const list = todos[currentTab]||[];
+  document.getElementById('todoList').innerHTML = list.length === 0
+    ? '<li style="color:#94a3b8;font-size:13px;padding:8px 0">タスクなし</li>'
+    : list.map((t,i) => `
+        <li>
+          <input type="checkbox" class="todo-check" ${t.done?'checked':''} onchange="toggleTodo(${i})">
+          <span class="todo-label" style="${t.done?'text-decoration:line-through;color:#94a3b8':''}">${t.text}</span>
+          <button class="todo-del" onclick="delTodo(${i})">✕</button>
+        </li>`).join('');
+}
+
+function addTodo() {
+  const input = document.getElementById('todoInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const todos = getTodos();
+  if (!todos[currentTab]) todos[currentTab]=[];
+  todos[currentTab].push({ text, done:false });
+  saveTodos(todos);
+  input.value = '';
+  renderTodos();
+}
+
+function toggleTodo(i) {
+  const todos = getTodos();
+  todos[currentTab][i].done = !todos[currentTab][i].done;
+  saveTodos(todos);
+  renderTodos();
+}
+
+function delTodo(i) {
+  const todos = getTodos();
+  todos[currentTab].splice(i,1);
+  saveTodos(todos);
+  renderTodos();
+}
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+  startClock();
+  renderDots();
+  loadTodayLog();
+  renderTodos();
+  loadAll();
+});
 </script>
 </body>
 </html>

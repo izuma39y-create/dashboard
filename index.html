@@ -775,10 +775,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   startClock();
   renderDots();
   updateSyncInfo();
-  if (localStorage.getItem('syncHidden') === '1') {
-    document.getElementById('syncBody').style.display = 'none';
-    document.getElementById('syncToggleBtn').textContent = '表示';
-  }
+  // syncBodyは常にデフォルト非表示（ユーザーが開いた場合のみ表示）
+  document.getElementById('syncBody').style.display = 'none';
+  document.getElementById('syncToggleBtn').textContent = '表示';
   // Gistがあれば最新データを読み込む
   if (getToken() && getGistId()) {
     const data = await gistLoad();

@@ -21,14 +21,17 @@ body {
 @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:.3;} }
 
 /* HEADER */
-.hdr { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px; }
+.hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
 .hdr-left {}
 .hdr-sub { font-size:10px; color:#94a3b8; letter-spacing:.08em; text-transform:uppercase; margin-bottom:2px; }
 .hdr-date { font-size:17px; font-weight:700; }
-.hdr-time { font-size:26px; font-weight:700; text-align:right; line-height:1; }
-.dots { display:flex; gap:6px; justify-content:flex-end; margin-top:3px; flex-wrap:wrap; }
-.dot-item { display:flex; align-items:center; gap:3px; font-size:9px; }
-.dot { width:5px; height:5px; border-radius:50%; display:inline-block; }
+.hdr-time {
+  font-size:38px; font-weight:200; text-align:right; line-height:1;
+  letter-spacing:-.02em; color:#0f172a;
+}
+.hdr-time .colon { opacity:.4; }
+.dots { display:flex; gap:6px; justify-content:flex-end; margin-top:4px; }
+.dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
 
 /* CARD BASE */
 .card {
@@ -152,10 +155,10 @@ body {
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-left">
-    <div class="hdr-sub">▸ my dashboard · 横浜</div>
+    <div class="hdr-sub">▸ my dashboard</div>
     <div class="hdr-date" id="dateStr">—</div>
   </div>
-  <div>
+  <div style="text-align:right">
     <div class="hdr-time" id="timeStr">--:--:--</div>
     <div class="dots" id="dots"></div>
   </div>
@@ -241,11 +244,14 @@ body {
         <input type="time" class="time-input" id="sleepTime">
       </div>
     </div>
-    <button class="save-btn" onclick="saveLog()">保存</button>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="save-btn" onclick="saveLog()" style="flex:1">保存</button>
+      <button class="save-btn" onclick="resetLog()" style="flex:1;background:#f1f5f9;color:#64748b">リセット</button>
+    </div>
     <div class="saved-msg" id="savedMsg">✓ 保存しました</div>
     <button class="hist-toggle" onclick="toggleHist()">📅 過去の記録を見る</button>
     <table class="hist-table" id="histTable">
-      <thead><tr><th>日付</th><th>体調</th><th>起床</th><th>就寝</th><th>日記</th></tr></thead>
+      <thead><tr><th>日付</th><th>体調</th><th>起床</th><th>日記</th><th>就寝</th><th></th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
   </div>
@@ -276,6 +282,10 @@ body {
       <input class="todo-input" id="todoInput" placeholder="タスクを追加..." onkeydown="if(event.key==='Enter')addTodo()">
       <button class="todo-btn" onclick="addTodo()">追加</button>
     </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="save-btn" onclick="clearDoneTodos()" style="flex:1;background:#f1f5f9;color:#64748b;font-size:12px">完了済みを削除</button>
+      <button class="save-btn" onclick="clearAllTodos()" style="flex:1;background:#fee2e2;color:#dc2626;font-size:12px">全て削除</button>
+    </div>
   </div>
 </div>
 
@@ -297,8 +307,31 @@ body {
 </div>
 
 <div style="text-align:right;font-size:10px;color:#94a3b8;margin-top:4px">
+  <span id="syncStatus" style="color:#16a34a;margin-right:8px"></span>
   <span id="lu">—</span> 更新
 </div>
+
+<!-- SYNC設定 -->
+<div class="card mb10" style="margin-top:10px">
+  <div class="card-top" style="background:linear-gradient(90deg,#64748b,#94a3b8)"></div>
+  <div class="card-inner">
+    <div class="card-lbl">☁️ デバイス間同期 (GitHub Gist)</div>
+    <div id="syncInfo" style="font-size:12px;color:#64748b;margin-bottom:8px"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button onclick="showTokenInput()" class="save-btn" style="font-size:12px;background:#f1f5f9;color:#475569;flex:1">トークン設定</button>
+      <button onclick="syncFromGist()" class="save-btn" style="font-size:12px;flex:1">↓ 読み込み</button>
+      <button onclick="syncToGist()" class="save-btn" style="font-size:12px;background:#16a34a;flex:1">↑ 保存</button>
+    </div>
+    <div id="tokenInputArea" style="display:none;margin-top:10px">
+      <input type="password" id="tokenInput" placeholder="ghp_..." style="width:100%;border:1.5px solid #e2e8f0;border-radius:7px;padding:8px 10px;font-size:13px;margin-bottom:6px;font-family:monospace">
+      <div style="display:flex;gap:6px">
+        <button onclick="saveToken()" class="save-btn" style="flex:1">保存</button>
+        <button onclick="clearToken()" class="save-btn" style="flex:1;background:#fee2e2;color:#dc2626">削除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <button class="refresh" onclick="loadAll()" style="margin-top:8px;margin-bottom:0">↻ 更新</button>
 
 <script>
@@ -324,8 +357,7 @@ function renderDots() {
   document.getElementById('dots').innerHTML = KEYS.map(k => {
     const s=ST[k], c=COLORS[k];
     const ds = s==='ok'?`background:${c}`:s==='err'?`background:#ef4444`:`background:transparent;border:1.5px solid ${c};animation:pulse 1.5s infinite`;
-    const tc = s==='ok'?c:s==='err'?'#ef4444':c+'80';
-    return `<span class="dot-item" style="color:${tc}"><span class="dot" style="${ds}"></span>${LABELS[k]}</span>`;
+    return `<span class="dot" style="${ds}" title="${LABELS[k]}"></span>`;
   }).join('');
 }
 function ld(c) { return `<div class="ld"><span class="sp" style="color:${c}"></span>取得中</div>`; }
@@ -463,6 +495,78 @@ async function fetchNews() {
   document.getElementById('lu').textContent = new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false});
 }
 
+// ── GIST SYNC ──
+let GITHUB_TOKEN = '';
+let GIST_ID = '';
+
+function getToken() { return localStorage.getItem('gh_token') || ''; }
+function getGistId() { return localStorage.getItem('gist_id') || ''; }
+
+async function gistSave(data) {
+  const token = getToken();
+  if (!token) return;
+  const gistId = getGistId();
+  const body = { files: { 'dashboard-data.json': { content: JSON.stringify(data, null, 2) } } };
+  if (gistId) {
+    await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } else {
+    const r = await fetch('https://api.github.com/gists', {
+      method: 'POST',
+      headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, description: 'Dashboard Data', public: false })
+    });
+    const d = await r.json();
+    if (d.id) { localStorage.setItem('gist_id', d.id); }
+  }
+}
+
+async function gistLoad() {
+  const token = getToken();
+  const gistId = getGistId();
+  if (!token || !gistId) return null;
+  try {
+    const r = await fetch(`https://api.github.com/gists/${gistId}`, {
+      headers: { 'Authorization': `token ${token}` }
+    });
+    const d = await r.json();
+    const content = d.files?.['dashboard-data.json']?.content;
+    return content ? JSON.parse(content) : null;
+  } catch(e) { return null; }
+}
+
+function getAllData() {
+  return {
+    logs: JSON.parse(localStorage.getItem('dailyLogs') || '{}'),
+    todos: JSON.parse(localStorage.getItem('todos') || '{"private":[],"work":[]}'),
+  };
+}
+
+function setAllData(data) {
+  if (data.logs) localStorage.setItem('dailyLogs', JSON.stringify(data.logs));
+  if (data.todos) localStorage.setItem('todos', JSON.stringify(data.todos));
+}
+
+async function syncFromGist() {
+  const data = await gistLoad();
+  if (data) {
+    setAllData(data);
+    loadTodayLog();
+    renderTodos();
+    const el = document.getElementById('syncStatus');
+    if (el) { el.textContent = '✓ 同期済み'; setTimeout(() => el.textContent='', 2000); }
+  }
+}
+
+async function syncToGist() {
+  await gistSave(getAllData());
+  const el = document.getElementById('syncStatus');
+  if (el) { el.textContent = '✓ 保存済み'; setTimeout(() => el.textContent='', 2000); }
+}
+
 // ── CONDITION LOG ──
 let todayCondVal = 0;
 const todayKey = () => new Date().toISOString().slice(0,10);
@@ -483,14 +587,15 @@ function saveLog() {
   logs[todayKey()] = {
     cond: todayCondVal,
     wake: document.getElementById('wakeTime').value,
-    sleep: document.getElementById('sleepTime').value,
     diary: document.getElementById('diaryTime').value,
+    sleep: document.getElementById('sleepTime').value,
   };
   localStorage.setItem('dailyLogs', JSON.stringify(logs));
   const msg = document.getElementById('savedMsg');
   msg.style.display = 'block';
   setTimeout(() => msg.style.display='none', 2000);
   renderHist();
+  if (getToken()) syncToGist();
 }
 
 function loadTodayLog() {
@@ -499,9 +604,26 @@ function loadTodayLog() {
   if (today) {
     if (today.cond) setCond(today.cond);
     if (today.wake) document.getElementById('wakeTime').value = today.wake;
-    if (today.sleep) document.getElementById('sleepTime').value = today.sleep;
     if (today.diary) document.getElementById('diaryTime').value = today.diary;
+    if (today.sleep) document.getElementById('sleepTime').value = today.sleep;
   }
+}
+
+function resetLog() {
+  todayCondVal = 0;
+  document.querySelectorAll('.cond-btn').forEach(btn => { btn.classList.remove('active'); btn.style.background='#fff'; });
+  document.getElementById('wakeTime').value = '';
+  document.getElementById('diaryTime').value = '';
+  document.getElementById('sleepTime').value = '';
+}
+
+function deleteLog(dt) {
+  if (!confirm(dt + ' のログを削除しますか？')) return;
+  const logs = JSON.parse(localStorage.getItem('dailyLogs')||'{}');
+  delete logs[dt];
+  localStorage.setItem('dailyLogs', JSON.stringify(logs));
+  renderHist();
+  if (getToken()) syncToGist();
 }
 
 function toggleHist() {
@@ -513,11 +635,15 @@ function toggleHist() {
 
 function renderHist() {
   const logs = JSON.parse(localStorage.getItem('dailyLogs')||'{}');
-  const COND_LABEL = {5:'◎絶好調',4:'○好調',3:'△普通',2:'▽不調',1:'×絶不調','':'—'};
+  const COND_LABEL = {5:'◎',4:'○',3:'△',2:'▽',1:'×','':'—'};
   const sorted = Object.keys(logs).sort().reverse().slice(0,14);
   document.getElementById('histBody').innerHTML = sorted.map(dt => {
     const l = logs[dt];
-    return `<tr><td>${dt}</td><td>${COND_LABEL[l.cond||'']||'—'}</td><td>${l.wake||'—'}</td><td>${l.sleep||'—'}</td><td>${l.diary||'—'}</td></tr>`;
+    return `<tr>
+      <td>${dt}</td><td>${COND_LABEL[l.cond||'']||'—'}</td>
+      <td>${l.wake||'—'}</td><td>${l.diary||'—'}</td><td>${l.sleep||'—'}</td>
+      <td><button onclick="deleteLog('${dt}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:0">✕</button></td>
+    </tr>`;
   }).join('');
 }
 
@@ -537,6 +663,7 @@ function getTodos() {
 }
 function saveTodos(todos) {
   localStorage.setItem('todos', JSON.stringify(todos));
+  if (getToken()) syncToGist();
 }
 
 function renderTodos() {
@@ -578,10 +705,67 @@ function delTodo(i) {
   renderTodos();
 }
 
+function showTokenInput() {
+  const area = document.getElementById('tokenInputArea');
+  area.style.display = area.style.display === 'none' ? 'block' : 'none';
+  const existing = getToken();
+  if (existing) document.getElementById('tokenInput').value = existing;
+}
+
+function saveToken() {
+  const val = document.getElementById('tokenInput').value.trim();
+  if (!val) return;
+  localStorage.setItem('gh_token', val);
+  document.getElementById('tokenInputArea').style.display = 'none';
+  updateSyncInfo();
+  syncFromGist();
+}
+
+function clearToken() {
+  if (!confirm('同期設定を削除しますか？')) return;
+  localStorage.removeItem('gh_token');
+  localStorage.removeItem('gist_id');
+  document.getElementById('tokenInput').value = '';
+  document.getElementById('tokenInputArea').style.display = 'none';
+  updateSyncInfo();
+}
+
+function updateSyncInfo() {
+  const el = document.getElementById('syncInfo');
+  if (!el) return;
+  const token = getToken();
+  const gistId = getGistId();
+  if (token && gistId) el.textContent = '✓ 設定済み · 保存/読み込みで同期';
+  else if (token) el.textContent = '初回保存でGistを自動作成します';
+  else el.textContent = 'トークン未設定 · このデバイスのみに保存';
+}
+
 // ── INIT ──
-window.addEventListener('DOMContentLoaded', () => {
+function clearDoneTodos() {
+  if (!confirm('完了済みタスクを削除しますか？')) return;
+  const todos = getTodos();
+  todos[currentTab] = (todos[currentTab]||[]).filter(t => !t.done);
+  saveTodos(todos);
+  renderTodos();
+}
+
+function clearAllTodos() {
+  if (!confirm('このタブのタスクを全て削除しますか？')) return;
+  const todos = getTodos();
+  todos[currentTab] = [];
+  saveTodos(todos);
+  renderTodos();
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
   startClock();
   renderDots();
+  updateSyncInfo();
+  // Gistがあれば最新データを読み込む
+  if (getToken() && getGistId()) {
+    const data = await gistLoad();
+    if (data) setAllData(data);
+  }
   loadTodayLog();
   renderTodos();
   loadAll();

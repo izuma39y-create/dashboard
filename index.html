@@ -315,18 +315,23 @@ body {
 <div class="card mb10" style="margin-top:10px">
   <div class="card-top" style="background:linear-gradient(90deg,#64748b,#94a3b8)"></div>
   <div class="card-inner">
-    <div class="card-lbl">☁️ デバイス間同期 (GitHub Gist)</div>
-    <div id="syncInfo" style="font-size:12px;color:#64748b;margin-bottom:8px"></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button onclick="showTokenInput()" class="save-btn" style="font-size:12px;background:#f1f5f9;color:#475569;flex:1">トークン設定</button>
-      <button onclick="syncFromGist()" class="save-btn" style="font-size:12px;flex:1">↓ 読み込み</button>
-      <button onclick="syncToGist()" class="save-btn" style="font-size:12px;background:#16a34a;flex:1">↑ 保存</button>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="card-lbl" style="margin-bottom:0">☁️ デバイス間同期</div>
+      <button onclick="toggleSync()" id="syncToggleBtn" style="font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;font-family:inherit">表示</button>
     </div>
-    <div id="tokenInputArea" style="display:none;margin-top:10px">
-      <input type="password" id="tokenInput" placeholder="ghp_..." style="width:100%;border:1.5px solid #e2e8f0;border-radius:7px;padding:8px 10px;font-size:13px;margin-bottom:6px;font-family:monospace">
-      <div style="display:flex;gap:6px">
-        <button onclick="saveToken()" class="save-btn" style="flex:1">保存</button>
-        <button onclick="clearToken()" class="save-btn" style="flex:1;background:#fee2e2;color:#dc2626">削除</button>
+    <div id="syncBody" style="display:none;margin-top:8px">
+      <div id="syncInfo" style="font-size:12px;color:#64748b;margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button onclick="showTokenInput()" class="save-btn" style="font-size:12px;background:#f1f5f9;color:#475569;flex:1">トークン設定</button>
+        <button onclick="syncFromGist()" class="save-btn" style="font-size:12px;flex:1">↓ 読み込み</button>
+        <button onclick="syncToGist()" class="save-btn" style="font-size:12px;background:#16a34a;flex:1">↑ 保存</button>
+      </div>
+      <div id="tokenInputArea" style="display:none;margin-top:10px">
+        <input type="password" id="tokenInput" placeholder="ghp_..." style="width:100%;border:1.5px solid #e2e8f0;border-radius:7px;padding:8px 10px;font-size:13px;margin-bottom:6px;font-family:monospace">
+        <div style="display:flex;gap:6px">
+          <button onclick="saveToken()" class="save-btn" style="flex:1">保存</button>
+          <button onclick="clearToken()" class="save-btn" style="flex:1;background:#fee2e2;color:#dc2626">削除</button>
+        </div>
       </div>
     </div>
   </div>
@@ -705,6 +710,15 @@ function delTodo(i) {
   renderTodos();
 }
 
+function toggleSync() {
+  const body = document.getElementById('syncBody');
+  const btn = document.getElementById('syncToggleBtn');
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? 'block' : 'none';
+  btn.textContent = hidden ? '非表示' : '表示';
+  localStorage.setItem('syncHidden', hidden ? '0' : '1');
+}
+
 function showTokenInput() {
   const area = document.getElementById('tokenInputArea');
   area.style.display = area.style.display === 'none' ? 'block' : 'none';
@@ -761,6 +775,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   startClock();
   renderDots();
   updateSyncInfo();
+  if (localStorage.getItem('syncHidden') === '1') {
+    document.getElementById('syncBody').style.display = 'none';
+    document.getElementById('syncToggleBtn').textContent = '表示';
+  }
   // Gistがあれば最新データを読み込む
   if (getToken() && getGistId()) {
     const data = await gistLoad();

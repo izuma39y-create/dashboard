@@ -245,9 +245,10 @@ body {
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="save-btn" onclick="saveLog()" style="flex:1">保存</button>
-      <button class="save-btn" onclick="resetLog()" style="flex:1;background:#f1f5f9;color:#64748b">リセット</button>
+      <button class="save-btn" onclick="saveLog()" style="flex:2">保存（追記）</button>
+      <button class="save-btn" onclick="resetLog()" style="flex:1;background:#f1f5f9;color:#64748b">クリア</button>
     </div>
+    <div style="font-size:10px;color:#94a3b8;margin-top:4px">※ 入力済みの項目だけ更新。朝に起床・ジャーナリング時間を保存→夜に就寝時間を追加保存できます</div>
     <div class="saved-msg" id="savedMsg">✓ 保存しました</div>
     <button class="hist-toggle" onclick="toggleHist()">📅 過去の記録を見る</button>
     <table class="hist-table" id="histTable">
@@ -262,7 +263,7 @@ body {
 <div class="card mb10">
   <div class="card-top" style="background:linear-gradient(90deg,#f97316,#f59e0b,#22c55e,#a855f7,#ef4444)"></div>
   <div class="card-inner">
-    <div class="card-lbl">📰 今日のホットトピック · NHK</div>
+    <div class="card-lbl">📰 今日のニュース · NHK</div>
     <div id="cnews"><div class="ld"><span class="sp" style="color:#22c55e"></span>取得中</div></div>
   </div>
 </div>
@@ -473,31 +474,26 @@ async function fetchNikkei() {
 
 // ── NEWS ──
 async function fetchNews() {
-  const cats = [
-    { label:'政治', color:'#f97316', bg:'#fff7ed', url:'https://www3.nhk.or.jp/rss/news/cat4.xml' },
-    { label:'経済', color:'#f59e0b', bg:'#fffbeb', url:'https://www3.nhk.or.jp/rss/news/cat6.xml' },
-    { label:'エンタメ', color:'#a855f7', bg:'#faf5ff', url:'https://www3.nhk.or.jp/rss/news/cat5.xml' },
-    { label:'スポーツ', color:'#22c55e', bg:'#f0fdf4', url:'https://www3.nhk.or.jp/rss/news/cat7.xml' },
-  ];
-  const results = await Promise.allSettled(cats.map(async c => {
-    const r = await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(c.url));
+  try {
+    const url = 'https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww3.nhk.or.jp%2Frss%2Fnews%2Fcat0.xml&count=6';
+    const r = await fetch(url);
     const d = await r.json();
-    const item = (d.items || [])[0];
-    return { ...c, title: item ? item.title.trim() : null, link: item ? item.link : 'https://www3.nhk.or.jp/news/' };
-  }));
-  const items = cats.map((c, i) => {
-    const r = results[i];
-    return r.status === 'fulfilled' ? r.value : { ...c, title: null, link: 'https://www3.nhk.or.jp/news/' };
-  });
-  document.getElementById('cnews').innerHTML =
-    items.map(c => `
-      <a href="${c.link}" target="_blank" class="news-item">
-        <span class="news-cat" style="color:${c.color};background:${c.bg}">${c.label}</span>
-        <span class="news-text">${c.title || 'NHK ' + c.label}</span>
-      </a>`).join('') +
-    '<a href="https://www3.nhk.or.jp/news/" target="_blank" class="news-more">その他のニュースはこちら ↗</a>';
-  setSt('news', 'ok');
-  document.getElementById('lu').textContent = new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false});
+    const items = (d.items || []).slice(0, 6);
+    if (items.length === 0) throw new Error('no items');
+    document.getElementById('cnews').innerHTML =
+      items.map((item, i) => `
+        <a href="${item.link}" target="_blank" class="news-item">
+          <span class="news-cat" style="color:#475569;background:#f1f5f9">${i+1}</span>
+          <span class="news-text">${item.title.trim()}</span>
+        </a>`).join('') +
+      '<a href="https://www3.nhk.or.jp/news/" target="_blank" class="news-more">NHKニュース ↗</a>';
+    setSt('news', 'ok');
+    document.getElementById('lu').textContent = new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false});
+  } catch(e) {
+    document.getElementById('cnews').innerHTML =
+      '<a href="https://www3.nhk.or.jp/news/" target="_blank" class="news-more">NHKニュースはこちら ↗</a>';
+    setSt('news', 'err');
+  }
 }
 
 // ── GIST SYNC ──
@@ -589,13 +585,20 @@ function setCond(val) {
 
 function saveLog() {
   const logs = JSON.parse(localStorage.getItem('dailyLogs')||'{}');
+  const existing = logs[todayKey()] || {};
+  // 入力済みのフィールドだけ更新（空欄は既存データを維持）
+  const wake = document.getElementById('wakeTime').value;
+  const diary = document.getElementById('diaryTime').value;
+  const sleep = document.getElementById('sleepTime').value;
   logs[todayKey()] = {
-    cond: todayCondVal,
-    wake: document.getElementById('wakeTime').value,
-    diary: document.getElementById('diaryTime').value,
-    sleep: document.getElementById('sleepTime').value,
+    cond: todayCondVal || existing.cond || 0,
+    wake: wake || existing.wake || '',
+    diary: diary || existing.diary || '',
+    sleep: sleep || existing.sleep || '',
   };
   localStorage.setItem('dailyLogs', JSON.stringify(logs));
+  // フォームに保存後の値を反映（空欄に既存値を表示）
+  loadTodayLog();
   const msg = document.getElementById('savedMsg');
   msg.style.display = 'block';
   setTimeout(() => msg.style.display='none', 2000);
